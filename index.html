@@ -271,39 +271,11 @@
     logEl.appendChild(line);line.style.transition='opacity .4s';requestAnimationFrame(function(){line.style.opacity=1;});
     while(logEl.children.length>6)logEl.removeChild(logEl.firstChild);}
 
-  /* ---------- futuristic thinking sound (procedural Web Audio — no files) ---------- */
-  var AC=null,thinkNodes=null,blipTimer=null;
-  function ensureAC(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended'){AC.resume();}return AC;}
-  function startThinkingSound(){
-    var ac=ensureAC();if(!ac||thinkNodes)return;
-    var master=ac.createGain();master.gain.value=0.0001;master.connect(ac.destination);
-    master.gain.linearRampToValueAtTime(0.06,ac.currentTime+0.25);
-    var o1=ac.createOscillator();o1.type='sine';o1.frequency.value=196;
-    var o2=ac.createOscillator();o2.type='sine';o2.frequency.value=196.6;
-    var droneGain=ac.createGain();droneGain.gain.value=0.5;
-    var lfo=ac.createOscillator();lfo.type='sine';lfo.frequency.value=3.2;
-    var lfoGain=ac.createGain();lfoGain.gain.value=0.35;
-    lfo.connect(lfoGain);lfoGain.connect(droneGain.gain);
-    o1.connect(droneGain);o2.connect(droneGain);droneGain.connect(master);
-    o1.start();o2.start();lfo.start();
-    function blip(){if(!thinkNodes)return;var t=ac.currentTime;
-      var bo=ac.createOscillator();bo.type='triangle';
-      var fr=[880,1046,1318,784,988];bo.frequency.value=fr[Math.floor(Math.random()*fr.length)];
-      var bg=ac.createGain();bg.gain.setValueAtTime(0.0001,t);
-      bg.gain.exponentialRampToValueAtTime(0.05,t+0.01);
-      bg.gain.exponentialRampToValueAtTime(0.0001,t+0.13);
-      bo.connect(bg);bg.connect(master);bo.start(t);bo.stop(t+0.16);}
-    blipTimer=setInterval(blip,430);
-    thinkNodes={master:master,osc:[o1,o2,lfo]};
-  }
-  function stopThinkingSound(){
-    if(!thinkNodes||!AC)return;var ac=AC,n=thinkNodes;thinkNodes=null;
-    if(blipTimer){clearInterval(blipTimer);blipTimer=null;}
-    try{n.master.gain.cancelScheduledValues(ac.currentTime);
-      n.master.gain.setValueAtTime(n.master.gain.value,ac.currentTime);
-      n.master.gain.linearRampToValueAtTime(0.0001,ac.currentTime+0.3);
-      n.osc.forEach(function(o){try{o.stop(ac.currentTime+0.35);}catch(e){}});}catch(e){}
-  }
+  /* ---------- thinking / loading sound (licensed "Binary Code" SFX, looped) ---------- */
+  var loadAudio=null;
+  function ensureLoadAudio(){if(!loadAudio){loadAudio=new Audio('jarvis-loading.mp3');loadAudio.loop=true;loadAudio.volume=0.8;}return loadAudio;}
+  function startThinkingSound(){var a=ensureLoadAudio();try{a.currentTime=0;a.play().catch(function(){});}catch(e){}}
+  function stopThinkingSound(){if(loadAudio){try{loadAudio.pause();}catch(e){}}}
 
   /* ---------- state controls ---------- */
   var STATUS={idle:'STANDBY',listening:'LISTENING',speaking:'SPEAKING',thinking:'WORKING'};
