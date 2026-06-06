@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Jarvis — Voice Orb Preview</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+    background: radial-gradient(130% 130% at 50% 38%, #0c1230 0%, #06080f 62%, #04050a 100%);
+    color: #fff; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100dvh; overflow: hidden; padding: 24px;
+  }
+  .brand { letter-spacing: .42em; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.5);
+    text-transform: uppercase; margin-bottom: 6px; }
+  .orb-wrap { position: relative; width: min(78vw, 360px); aspect-ratio: 1; display: grid; place-items: center; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .label { margin-top: 22px; font-size: 20px; font-weight: 600; min-height: 26px; text-align:center; }
+  .sub { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.4); max-width: 320px; text-align:center; line-height:1.5; }
+  .controls { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    appearance: none; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05);
+    color: #fff; font: inherit; font-size: 14px; font-weight: 600; padding: 11px 18px;
+    border-radius: 999px; cursor: pointer; transition: all .18s ease;
+  }
+  button:hover { background: rgba(255,255,255,.1); }
+  button.active { background: linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899); border-color: transparent; box-shadow: 0 8px 30px rgba(139,92,246,.35); }
+  .foot { position: fixed; bottom: 16px; font-size: 11px; color: rgba(255,255,255,.28); letter-spacing:.04em; }
+</style>
+</head>
+<body>
+  <div class="brand">Jarvis</div>
+  <div class="orb-wrap"><canvas id="orb"></canvas></div>
+  <div class="label" id="label">Idle</div>
+  <div class="sub" id="sub">Resting state — a slow, calm breath.</div>
+  <div class="controls">
+    <button data-state="idle" class="active">Idle</button>
+    <button data-state="listening">Listening</button>
+    <button data-state="speaking">Speaking</button>
+    <button data-state="thinking">Thinking</button>
+  </div>
+  <div class="foot">SnapCoat · Jarvis voice orb preview</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('orb');
+  var ctx = canvas.getContext('2d');
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 0, H = 0, CX = 0, CY = 0, R = 0;
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = Math.max(1, Math.round(W * DPR));
+    canvas.height = Math.max(1, Math.round(H * DPR));
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    CX = W / 2; CY = H / 2; R = Math.min(W, H) * 0.34;
+  }
+  window.addEventListener('resize', resize);
+
+  var BRAND = [[37,99,235],[59,130,246],[139,92,246],[192,38,211],[236,72,153]];
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function brandColor(t){
+    t = Math.max(0, Math.min(0.9999, t));
+    var f=t*(BRAND.length-1), i=Math.floor(f), k=f-i, a=BRAND[i], b=BRAND[i+1];
+    return [Math.round(lerp(a[0],b[0],k)),Math.round(lerp(a[1],b[1],k)),Math.round(lerp(a[2],b[2],k))];
+  }
+  var LAT=32, LON=60, verts=[];
+  for (var i=0;i<=LAT;i++) for (var j=0;j<LON;j++) verts.push({lat:(i/LAT)*Math.PI, lon:(j/LON)*Math.PI*2});
+  var parts=[];
+  for (var p=0;p<200;p++) parts.push({a:Math.random()*6.28, rad:1.05+Math.random()*0.55, y:(Math.random()-0.5)*2.1, sp:0.0008+Math.random()*0.0018, ph:Math.random()*6.28, sz:Math.random()*2+0.5});
+  function noise(la,lo,t){ return Math.sin(la*3+t*1.1)*0.5+Math.sin(lo*4-t*1.3)*0.5+Math.sin((la+lo)*2+t*0.7)*0.4; }
+  function project(x,y,z){ var pp=900/(900+z); return [CX+x*pp, CY+y*pp, pp]; }
+  function idx(i,j){ return i*LON+(j%LON); }
+
+  var state = 'idle';
+  var level = 0, t = 0;
+
+  // Simulated audio level per state (no real mic — this previews the look).
+  function targetFor() {
+    var active = (state !== 'idle');
+    var target = active ? 0.06 : 0.0;
+    if (state === 'thinking') {
+      // The real "working" pulse from the app.
+      var pulse = 0.30 + 0.18*(0.5+0.5*Math.sin(t*4.2)) + 0.06*Math.sin(t*9.0);
+      target = Math.max(target, pulse);
+    } else if (state === 'speaking') {
+      // Lively, varied speech-like motion.
+      var s = 0.32 + 0.30*Math.abs(Math.sin(t*2.1)) + 0.16*Math.sin(t*6.7) + 0.10*Math.sin(t*11.3);
+      target = Math.max(target, Math.max(0, s));
+    } else if (state === 'listening') {
+      // Gentle, attentive shimmer.
+      target = Math.max(target, 0.12 + 0.06*(0.5+0.5*Math.sin(t*1.7)));
+    }
+    return target;
+  }
+
+  function frame() {
+    t += 0.016;
+    var active = (state !== 'idle');
+    var thinking = (state === 'thinking');
+    var target = targetFor();
+    level = lerp(level, target, thinking ? 0.4 : 0.28);
+    var idleBreath = ((active || thinking) ? 0.0 : 1) * (0.5+0.5*Math.sin(t*0.9)) * 0.05;
+    var lv = Math.min(1, level + idleBreath);
+
+    ctx.clearRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    var bloom = ctx.createRadialGradient(CX,CY,0,CX,CY,R*(1.5+lv*0.5));
+    bloom.addColorStop(0, 'rgba(139,92,246,'+(0.13+lv*0.22)+')');
+    bloom.addColorStop(0.5, 'rgba(99,102,241,'+(0.05+lv*0.10)+')');
+    bloom.addColorStop(1, 'rgba(6,8,15,0)');
+    ctx.fillStyle = bloom; ctx.fillRect(0,0,W,H);
+
+    var rotY=t*0.25, rotX=Math.sin(t*0.18)*0.25;
+    var cy=Math.cos(rotX), sy=Math.sin(rotX), cz=Math.cos(rotY), sz=Math.sin(rotY);
+    var P=new Array(verts.length);
+    for (var v=0; v<verts.length; v++) {
+      var la=verts[v].lat, lo=verts[v].lon;
+      var breathe = 1 + lv*0.20 + Math.sin(t*1.6)*0.012;
+      var ripple = 1 + (0.035+lv*0.13)*noise(la,lo,t) + lv*0.045*Math.sin(lo*7+t*5.5);
+      var r = R*breathe*ripple;
+      var x=r*Math.sin(la)*Math.cos(lo), y=r*Math.cos(la), z=r*Math.sin(la)*Math.sin(lo);
+      var x1=x*cz - z*sz, z1=x*sz + z*cz, y2=y*cy - z1*sy, z2=y*sy + z1*cy;
+      var pr=project(x1,y2,z2);
+      P[v]={x:pr[0], y:pr[1], persp:pr[2]};
+    }
+
+    ctx.lineCap='round';
+    for (var ii=0; ii<=LAT; ii++) {
+      var c=brandColor((ii/LAT)*0.85+0.05);
+      var path=new Path2D();
+      for (var jj=0; jj<LON; jj++) {
+        var aV=P[idx(ii,jj)], e=P[idx(ii,jj+1)];
+        path.moveTo(aV.x,aV.y); path.lineTo(e.x,e.y);
+        if (ii<LAT){ var b=P[idx(ii+1,jj)]; path.moveTo(aV.x,aV.y); path.lineTo(b.x,b.y); }
+      }
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.08+lv*0.10)+')'; ctx.lineWidth=3.0; ctx.stroke(path);
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.42+lv*0.40)+')'; ctx.lineWidth=1.0; ctx.stroke(path);
+    }
+    for (var q=0; q<parts.length; q++) {
+      var pt=parts[q];
+      pt.a += pt.sp*(1+lv*2);
+      var px=Math.cos(pt.a)*pt.rad*R, pz=Math.sin(pt.a)*pt.rad*R, py=pt.y*R+Math.sin(t*0.6+pt.ph)*10;
+      var px1=px*cz - pz*sz, pz1=px*sz + pz*cz, py2=py*cy - pz1*sy, pz2=py*sy + pz1*cy;
+      var ppr=project(px1,py2,pz2), pc=brandColor((pt.y/2)+0.5), tw=0.4+0.6*Math.abs(Math.sin(t*2+pt.ph));
+      ctx.fillStyle='rgba('+pc[0]+','+pc[1]+','+pc[2]+','+((0.2+lv*0.5)*tw*ppr[2])+')';
+      ctx.beginPath(); ctx.arc(ppr[0],ppr[1], pt.sz*ppr[2]*(1+lv*0.5), 0, 6.28); ctx.fill();
+    }
+
+    ctx.globalCompositeOperation='source-over';
+    requestAnimationFrame(frame);
+  }
+
+  var LABELS = {
+    idle:      ['Idle', 'Resting state — a slow, calm breath.'],
+    listening: ['Listening…', 'Attentive shimmer while you talk.'],
+    speaking:  ['Speaking', 'Reacts live to Jarvis’s voice.'],
+    thinking:  ['Working…', 'The new thinking pulse — shown while he pulls your data, so it never sits dead.']
+  };
+  var labelEl = document.getElementById('label'), subEl = document.getElementById('sub');
+  function setState(s) {
+    state = s;
+    labelEl.textContent = LABELS[s][0];
+    subEl.textContent = LABELS[s][1];
+    var btns = document.querySelectorAll('button[data-state]');
+    for (var k=0;k<btns.length;k++) btns[k].classList.toggle('active', btns[k].getAttribute('data-state')===s);
+  }
+  document.querySelectorAll('button[data-state]').forEach(function(btn){
+    btn.addEventListener('click', function(){ setState(btn.getAttribute('data-state')); });
+  });
+
+  resize();
+  requestAnimationFrame(frame);
+
+  // Auto-demo: cycle through the states once so the preview is alive on load,
+  // then settle on "thinking" so the new state is front-and-center.
+  var seq = ['idle','listening','speaking','thinking'], si = 0;
+  var auto = setInterval(function(){ si++; if (si>=seq.length){ clearInterval(auto); return; } setState(seq[si]); }, 2600);
+  document.addEventListener('click', function(){ clearInterval(auto); }, { once: true });
+})();
+</script>
+</body>
+</html>
