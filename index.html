@@ -1,187 +1,298 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Jarvis — Voice Orb Preview</title>
+<!-- JARVIS — SnapCoat operating-partner HUD. Cyan holographic shell (inspired by
+     Braiden's A.R.I.A mockup) fused with the live reactive voice orb. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JARVIS — Interface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
-    background: radial-gradient(130% 130% at 50% 38%, #0c1230 0%, #06080f 62%, #04050a 100%);
-    color: #fff; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; min-height: 100dvh; overflow: hidden; padding: 24px;
+  :root{
+    --cyan:#3fe7ff; --cyan-dim:#1d6b7a; --amber:#ffb347;
+    --bg0:#02060c;
+    --glow:0 0 8px var(--cyan), 0 0 22px rgba(63,231,255,.45);
   }
-  .brand { letter-spacing: .42em; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.5);
-    text-transform: uppercase; margin-bottom: 6px; }
-  .orb-wrap { position: relative; width: min(78vw, 360px); aspect-ratio: 1; display: grid; place-items: center; }
-  canvas { width: 100%; height: 100%; display: block; }
-  .label { margin-top: 22px; font-size: 20px; font-weight: 600; min-height: 26px; text-align:center; }
-  .sub { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.4); max-width: 320px; text-align:center; line-height:1.5; }
-  .controls { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-  button {
-    appearance: none; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05);
-    color: #fff; font: inherit; font-size: 14px; font-weight: 600; padding: 11px 18px;
-    border-radius: 999px; cursor: pointer; transition: all .18s ease;
-  }
-  button:hover { background: rgba(255,255,255,.1); }
-  button.active { background: linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899); border-color: transparent; box-shadow: 0 8px 30px rgba(139,92,246,.35); }
-  .foot { position: fixed; bottom: 16px; font-size: 11px; color: rgba(255,255,255,.28); letter-spacing:.04em; }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg0);overflow:hidden;font-family:"Share Tech Mono",monospace;color:var(--cyan)}
+  #stage{position:fixed;inset:0;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(63,231,255,.06), transparent 55%),
+      radial-gradient(circle at 50% 120%, rgba(63,231,255,.10), transparent 60%),
+      var(--bg0);}
+  .grid{position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(63,231,255,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(63,231,255,.08) 1px, transparent 1px);
+    background-size:46px 46px;
+    mask-image:radial-gradient(circle at 50% 50%, #000 0%, transparent 72%);
+    -webkit-mask-image:radial-gradient(circle at 50% 50%, #000 0%, transparent 72%);
+    animation:gridmove 12s linear infinite;opacity:.55}
+  @keyframes gridmove{from{background-position:0 0,0 0}to{background-position:46px 46px,46px 46px}}
+  .scan{position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px);
+    mix-blend-mode:overlay;opacity:.4}
+  .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 220px 60px rgba(0,0,0,.9)}
+  .particles{position:absolute;inset:0;pointer-events:none}
+  .p{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--cyan);box-shadow:var(--glow);animation:float linear infinite}
+  @keyframes float{0%{transform:translateY(20px);opacity:0}10%{opacity:.8}90%{opacity:.8}100%{transform:translateY(-110vh);opacity:0}}
+
+  #core{position:absolute;top:50%;left:50%;width:520px;height:520px;transform:translate(-50%,-50%)}
+  svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .ring-line{fill:none;stroke:var(--cyan);filter:drop-shadow(0 0 4px rgba(63,231,255,.7))}
+  .spin-cw{transform-origin:50% 50%;animation:spin 18s linear infinite}
+  .spin-ccw{transform-origin:50% 50%;animation:spin 26s linear infinite reverse}
+  .spin-fast{transform-origin:50% 50%;animation:spin 9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* live reactive orb canvas sits inside the ring system */
+  #orb-canvas{position:absolute;top:50%;left:50%;width:300px;height:300px;transform:translate(-50%,-50%)}
+
+  .hud{position:absolute;text-transform:uppercase;letter-spacing:2px;font-size:12px;text-shadow:var(--glow);opacity:0;animation:fadein .8s forwards}
+  .label{color:var(--cyan-dim);font-size:10px;letter-spacing:3px}
+  .ttl{font-family:"Orbitron",sans-serif;font-weight:800}
+  #clock{top:34px;left:50%;transform:translateX(-50%);text-align:center}
+  #clock .time{font-family:"Orbitron",sans-serif;font-weight:800;font-size:34px;line-height:1;text-shadow:var(--glow)}
+  #clock .date{margin-top:6px;font-size:11px;color:#9fe9f6;letter-spacing:4px}
+  #status{top:34px;left:40px}
+  #status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:var(--glow);margin-right:8px;animation:blink 1.4s steps(2) infinite;vertical-align:middle}
+  @keyframes blink{50%{opacity:.25}}
+  #brand{top:34px;right:40px;text-align:right}
+  #brand .big{font-family:"Orbitron",sans-serif;font-weight:800;font-size:24px;text-shadow:var(--glow)}
+  #diag{left:40px;bottom:40px;width:240px}
+  #diag .row{margin-bottom:14px}
+  #diag .bar{height:6px;background:rgba(63,231,255,.12);border:1px solid rgba(63,231,255,.3);margin-top:5px;position:relative;overflow:hidden}
+  #diag .fill{position:absolute;inset:0;width:0;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));box-shadow:0 0 8px var(--cyan);animation:meter 4s ease-in-out infinite}
+  #diag .row:nth-child(2) .fill{animation-delay:.4s}
+  #diag .row:nth-child(3) .fill{animation-delay:.9s}
+  #diag .row:nth-child(4) .fill{animation-delay:1.3s}
+  @keyframes meter{0%,100%{width:35%}50%{width:88%}}
+  #log{right:40px;bottom:40px;width:300px;text-align:left}
+  #log .line{font-size:11px;color:#9fe9f6;opacity:0;margin-bottom:7px;white-space:nowrap}
+  #log .line .ok{color:var(--cyan);text-shadow:var(--glow)}
+  #wave{bottom:30px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:3px;height:46px}
+  #wave span{width:4px;background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+  @keyframes fadein{to{opacity:1}}
+
+  /* state controls */
+  #controls{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:20;opacity:0;animation:fadein .8s .6s forwards}
+  #controls button{appearance:none;border:1px solid rgba(63,231,255,.3);background:rgba(63,231,255,.06);color:var(--cyan);
+    font-family:"Share Tech Mono",monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:9px 15px;border-radius:4px;cursor:pointer;transition:all .16s}
+  #controls button:hover{background:rgba(63,231,255,.14)}
+  #controls button.active{background:var(--cyan);color:#02141a;border-color:var(--cyan);box-shadow:var(--glow)}
+
+  #boot{position:absolute;inset:0;background:var(--bg0);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;transition:opacity 1s}
+  #boot .b-title{font-family:"Orbitron",sans-serif;font-weight:800;font-size:34px;letter-spacing:10px;text-shadow:var(--glow);margin-bottom:18px}
+  #boot .b-txt{font-size:13px;letter-spacing:2px;color:#9fe9f6;min-height:20px}
+  #boot .b-bar{margin-top:26px;width:300px;height:4px;background:rgba(63,231,255,.15);border:1px solid rgba(63,231,255,.4)}
+  #boot .b-fill{height:100%;width:0;background:var(--cyan);box-shadow:0 0 10px var(--cyan);transition:width .25s}
+  .hidden{opacity:0;pointer-events:none}
+  @media (max-width:720px){#core{width:340px;height:340px}#orb-canvas{width:210px;height:210px}#diag,#log{display:none}#clock .time{font-size:26px}#brand .big{font-size:20px}}
 </style>
 </head>
 <body>
-  <div class="brand">Jarvis</div>
-  <div class="orb-wrap"><canvas id="orb"></canvas></div>
-  <div class="label" id="label">Idle</div>
-  <div class="sub" id="sub">Resting state — a slow, calm breath.</div>
-  <div class="controls">
+<div id="stage">
+  <div class="grid"></div>
+  <div class="particles" id="particles"></div>
+
+  <div id="core">
+    <svg viewBox="0 0 520 520">
+      <g class="spin-cw">
+        <circle class="ring-line" cx="260" cy="260" r="250" stroke-width="1.5" stroke-dasharray="2 14"/>
+        <circle class="ring-line" cx="260" cy="260" r="244" stroke-width="1" opacity=".5"/>
+      </g>
+      <g class="spin-ccw">
+        <circle class="ring-line" cx="260" cy="260" r="210" stroke-width="6" stroke-dasharray="120 40" opacity=".85"/>
+      </g>
+      <g class="spin-cw" id="ticks"></g>
+      <g class="spin-fast">
+        <circle class="ring-line" cx="260" cy="260" r="135" stroke-width="2" stroke-dasharray="6 10" style="stroke:var(--amber);filter:drop-shadow(0 0 4px var(--amber))"/>
+      </g>
+      <circle class="ring-line" cx="260" cy="260" r="108" stroke-width="1" opacity=".4"/>
+    </svg>
+    <canvas id="orb-canvas"></canvas>
+  </div>
+
+  <div id="clock" class="hud" style="animation-delay:.2s">
+    <div class="time" id="time">00:00:00</div>
+    <div class="date" id="date">—</div>
+  </div>
+
+  <div id="status" class="hud" style="animation-delay:.4s">
+    <span class="dot"></span><span class="ttl" id="statusText">SYSTEM ONLINE</span>
+    <div class="label" id="uptime" style="margin-top:6px">UPTIME 00:00:00</div>
+  </div>
+
+  <div id="brand" class="hud" style="animation-delay:.4s">
+    <div class="big">JARVIS</div>
+    <div class="label">SNAPCOAT&nbsp;OPERATING&nbsp;PARTNER</div>
+  </div>
+
+  <div id="diag" class="hud" style="animation-delay:.8s">
+    <div class="row"><div class="label">PIPELINE LOAD</div><div class="bar"><div class="fill"></div></div></div>
+    <div class="row"><div class="label">REVENUE SIGNAL</div><div class="bar"><div class="fill"></div></div></div>
+    <div class="row"><div class="label">DATA THROUGHPUT</div><div class="bar"><div class="fill"></div></div></div>
+    <div class="row"><div class="label">CREW SCHEDULE</div><div class="bar"><div class="fill"></div></div></div>
+  </div>
+
+  <div id="log" class="hud" style="animation-delay:.8s"></div>
+
+  <div id="wave" class="hud" style="animation-delay:.6s"></div>
+
+  <div id="controls">
     <button data-state="idle" class="active">Idle</button>
     <button data-state="listening">Listening</button>
     <button data-state="speaking">Speaking</button>
     <button data-state="thinking">Thinking</button>
   </div>
-  <div class="foot">SnapCoat · Jarvis voice orb preview</div>
+
+  <div class="scan"></div>
+  <div class="vignette"></div>
+</div>
+
+<div id="boot">
+  <div class="b-title">JARVIS</div>
+  <div class="b-txt" id="bootTxt">INITIALIZING SYSTEMS</div>
+  <div class="b-bar"><div class="b-fill" id="bootFill"></div></div>
+</div>
 
 <script>
-(function () {
-  var canvas = document.getElementById('orb');
-  var ctx = canvas.getContext('2d');
-  var DPR = Math.min(window.devicePixelRatio || 1, 2);
-  var W = 0, H = 0, CX = 0, CY = 0, R = 0;
-  function resize() {
-    var rect = canvas.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    canvas.width = Math.max(1, Math.round(W * DPR));
-    canvas.height = Math.max(1, Math.round(H * DPR));
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    CX = W / 2; CY = H / 2; R = Math.min(W, H) * 0.34;
-  }
-  window.addEventListener('resize', resize);
+  /* ---------- ring tick marks ---------- */
+  var ticks=document.getElementById('ticks'),tk='';
+  for(var i=0;i<72;i++){var a=i*5*Math.PI/180,long=i%6===0,r1=178,r2=long?160:170;
+    tk+='<line class="ring-line" x1="'+(260+Math.cos(a)*r1)+'" y1="'+(260+Math.sin(a)*r1)+'" x2="'+(260+Math.cos(a)*r2)+'" y2="'+(260+Math.sin(a)*r2)+'" stroke-width="'+(long?2:1)+'" opacity="'+(long?.9:.45)+'"/>';}
+  ticks.innerHTML=tk;
 
-  var BRAND = [[37,99,235],[59,130,246],[139,92,246],[192,38,211],[236,72,153]];
-  function lerp(a,b,t){ return a+(b-a)*t; }
-  function brandColor(t){
-    t = Math.max(0, Math.min(0.9999, t));
-    var f=t*(BRAND.length-1), i=Math.floor(f), k=f-i, a=BRAND[i], b=BRAND[i+1];
-    return [Math.round(lerp(a[0],b[0],k)),Math.round(lerp(a[1],b[1],k)),Math.round(lerp(a[2],b[2],k))];
-  }
-  var LAT=32, LON=60, verts=[];
-  for (var i=0;i<=LAT;i++) for (var j=0;j<LON;j++) verts.push({lat:(i/LAT)*Math.PI, lon:(j/LON)*Math.PI*2});
-  var parts=[];
-  for (var p=0;p<200;p++) parts.push({a:Math.random()*6.28, rad:1.05+Math.random()*0.55, y:(Math.random()-0.5)*2.1, sp:0.0008+Math.random()*0.0018, ph:Math.random()*6.28, sz:Math.random()*2+0.5});
-  function noise(la,lo,t){ return Math.sin(la*3+t*1.1)*0.5+Math.sin(lo*4-t*1.3)*0.5+Math.sin((la+lo)*2+t*0.7)*0.4; }
-  function project(x,y,z){ var pp=900/(900+z); return [CX+x*pp, CY+y*pp, pp]; }
-  function idx(i,j){ return i*LON+(j%LON); }
+  /* ---------- particles ---------- */
+  var pc=document.getElementById('particles');
+  for(var i=0;i<40;i++){var p=document.createElement('div');p.className='p';
+    p.style.left=Math.random()*100+'%';p.style.bottom='-10px';
+    p.style.animationDuration=(7+Math.random()*9)+'s';p.style.animationDelay=(-Math.random()*12)+'s';
+    p.style.opacity=(0.2+Math.random()*0.6);pc.appendChild(p);}
 
-  var state = 'idle';
-  var level = 0, t = 0;
+  /* ---------- state machine ---------- */
+  var state='idle';
 
-  // Simulated audio level per state (no real mic — this previews the look).
-  function targetFor() {
-    var active = (state !== 'idle');
-    var target = active ? 0.06 : 0.0;
-    if (state === 'thinking') {
-      // The real "working" pulse from the app.
-      var pulse = 0.30 + 0.18*(0.5+0.5*Math.sin(t*4.2)) + 0.06*Math.sin(t*9.0);
-      target = Math.max(target, pulse);
-    } else if (state === 'speaking') {
-      // Lively, varied speech-like motion.
-      var s = 0.32 + 0.30*Math.abs(Math.sin(t*2.1)) + 0.16*Math.sin(t*6.7) + 0.10*Math.sin(t*11.3);
-      target = Math.max(target, Math.max(0, s));
-    } else if (state === 'listening') {
-      // Gentle, attentive shimmer.
-      target = Math.max(target, 0.12 + 0.06*(0.5+0.5*Math.sin(t*1.7)));
-    }
+  /* ---------- waveform (state-reactive) ---------- */
+  var wave=document.getElementById('wave'),bars=[];
+  for(var i=0;i<48;i++){var s=document.createElement('span');s.style.height='6px';wave.appendChild(s);bars.push({el:s,ph:Math.random()*6.28,sp:0.6+Math.random()*0.9});}
+
+  /* ---------- reactive orb (canvas wireframe sphere, cyan-tuned) ---------- */
+  var canvas=document.getElementById('orb-canvas'),ctx=canvas.getContext('2d');
+  var DPR=Math.min(window.devicePixelRatio||1,2),W=0,H=0,CX=0,CY=0,R=0;
+  function resize(){var rect=canvas.getBoundingClientRect();W=rect.width;H=rect.height;
+    canvas.width=Math.max(1,Math.round(W*DPR));canvas.height=Math.max(1,Math.round(H*DPR));
+    ctx.setTransform(DPR,0,0,DPR,0,0);CX=W/2;CY=H/2;R=Math.min(W,H)*0.40;}
+  window.addEventListener('resize',resize);
+  var BRAND=[[210,251,255],[63,231,255],[34,211,238],[56,189,248],[125,211,252]];
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function brandColor(t){t=Math.max(0,Math.min(0.9999,t));var f=t*(BRAND.length-1),i=Math.floor(f),k=f-i,a=BRAND[i],b=BRAND[i+1];
+    return [Math.round(lerp(a[0],b[0],k)),Math.round(lerp(a[1],b[1],k)),Math.round(lerp(a[2],b[2],k))];}
+  var LAT=30,LON=54,verts=[];
+  for(var ii=0;ii<=LAT;ii++)for(var jj=0;jj<LON;jj++)verts.push({lat:(ii/LAT)*Math.PI,lon:(jj/LON)*Math.PI*2});
+  var sparks=[];for(var q=0;q<150;q++)sparks.push({a:Math.random()*6.28,rad:1.05+Math.random()*0.5,y:(Math.random()-0.5)*2.1,sp:0.0008+Math.random()*0.0018,ph:Math.random()*6.28,sz:Math.random()*1.8+0.5});
+  function noise(la,lo,t){return Math.sin(la*3+t*1.1)*0.5+Math.sin(lo*4-t*1.3)*0.5+Math.sin((la+lo)*2+t*0.7)*0.4;}
+  function project(x,y,z){var pp=900/(900+z);return [CX+x*pp,CY+y*pp,pp];}
+  function idx(i,j){return i*LON+(j%LON);}
+  var level=0,t=0;
+  function targetFor(){
+    var active=(state!=='idle'),target=active?0.06:0.0;
+    if(state==='thinking'){var pulse=0.30+0.18*(0.5+0.5*Math.sin(t*4.2))+0.06*Math.sin(t*9.0);target=Math.max(target,pulse);}
+    else if(state==='speaking'){var sp=0.32+0.30*Math.abs(Math.sin(t*2.1))+0.16*Math.sin(t*6.7)+0.10*Math.sin(t*11.3);target=Math.max(target,Math.max(0,sp));}
+    else if(state==='listening'){target=Math.max(target,0.12+0.06*(0.5+0.5*Math.sin(t*1.7)));}
     return target;
   }
-
-  function frame() {
-    t += 0.016;
-    var active = (state !== 'idle');
-    var thinking = (state === 'thinking');
-    var target = targetFor();
-    level = lerp(level, target, thinking ? 0.4 : 0.28);
-    var idleBreath = ((active || thinking) ? 0.0 : 1) * (0.5+0.5*Math.sin(t*0.9)) * 0.05;
-    var lv = Math.min(1, level + idleBreath);
+  resize();
+  function frame(){
+    t+=0.016;
+    var active=(state!=='idle'),thinking=(state==='thinking');
+    var target=targetFor();
+    level=lerp(level,target,thinking?0.4:0.28);
+    var idleBreath=((active||thinking)?0.0:1)*(0.5+0.5*Math.sin(t*0.9))*0.05;
+    var lv=Math.min(1,level+idleBreath);
 
     ctx.clearRect(0,0,W,H);
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation='lighter';
+    var bloom=ctx.createRadialGradient(CX,CY,0,CX,CY,R*(1.5+lv*0.5));
+    bloom.addColorStop(0,'rgba(63,231,255,'+(0.14+lv*0.24)+')');
+    bloom.addColorStop(0.5,'rgba(34,211,238,'+(0.05+lv*0.10)+')');
+    bloom.addColorStop(1,'rgba(2,6,12,0)');
+    ctx.fillStyle=bloom;ctx.fillRect(0,0,W,H);
 
-    var bloom = ctx.createRadialGradient(CX,CY,0,CX,CY,R*(1.5+lv*0.5));
-    bloom.addColorStop(0, 'rgba(139,92,246,'+(0.13+lv*0.22)+')');
-    bloom.addColorStop(0.5, 'rgba(99,102,241,'+(0.05+lv*0.10)+')');
-    bloom.addColorStop(1, 'rgba(6,8,15,0)');
-    ctx.fillStyle = bloom; ctx.fillRect(0,0,W,H);
-
-    var rotY=t*0.25, rotX=Math.sin(t*0.18)*0.25;
-    var cy=Math.cos(rotX), sy=Math.sin(rotX), cz=Math.cos(rotY), sz=Math.sin(rotY);
+    var rotY=t*0.25,rotX=Math.sin(t*0.18)*0.25;
+    var cy=Math.cos(rotX),sy=Math.sin(rotX),cz=Math.cos(rotY),sz=Math.sin(rotY);
     var P=new Array(verts.length);
-    for (var v=0; v<verts.length; v++) {
-      var la=verts[v].lat, lo=verts[v].lon;
-      var breathe = 1 + lv*0.20 + Math.sin(t*1.6)*0.012;
-      var ripple = 1 + (0.035+lv*0.13)*noise(la,lo,t) + lv*0.045*Math.sin(lo*7+t*5.5);
-      var r = R*breathe*ripple;
-      var x=r*Math.sin(la)*Math.cos(lo), y=r*Math.cos(la), z=r*Math.sin(la)*Math.sin(lo);
-      var x1=x*cz - z*sz, z1=x*sz + z*cz, y2=y*cy - z1*sy, z2=y*sy + z1*cy;
-      var pr=project(x1,y2,z2);
-      P[v]={x:pr[0], y:pr[1], persp:pr[2]};
-    }
-
+    for(var v=0;v<verts.length;v++){var la=verts[v].lat,lo=verts[v].lon;
+      var breathe=1+lv*0.20+Math.sin(t*1.6)*0.012;
+      var ripple=1+(0.035+lv*0.13)*noise(la,lo,t)+lv*0.045*Math.sin(lo*7+t*5.5);
+      var r=R*breathe*ripple;
+      var x=r*Math.sin(la)*Math.cos(lo),y=r*Math.cos(la),z=r*Math.sin(la)*Math.sin(lo);
+      var x1=x*cz-z*sz,z1=x*sz+z*cz,y2=y*cy-z1*sy,z2=y*sy+z1*cy;
+      var pr=project(x1,y2,z2);P[v]={x:pr[0],y:pr[1]};}
     ctx.lineCap='round';
-    for (var ii=0; ii<=LAT; ii++) {
-      var c=brandColor((ii/LAT)*0.85+0.05);
-      var path=new Path2D();
-      for (var jj=0; jj<LON; jj++) {
-        var aV=P[idx(ii,jj)], e=P[idx(ii,jj+1)];
-        path.moveTo(aV.x,aV.y); path.lineTo(e.x,e.y);
-        if (ii<LAT){ var b=P[idx(ii+1,jj)]; path.moveTo(aV.x,aV.y); path.lineTo(b.x,b.y); }
-      }
-      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.08+lv*0.10)+')'; ctx.lineWidth=3.0; ctx.stroke(path);
-      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.42+lv*0.40)+')'; ctx.lineWidth=1.0; ctx.stroke(path);
-    }
-    for (var q=0; q<parts.length; q++) {
-      var pt=parts[q];
-      pt.a += pt.sp*(1+lv*2);
-      var px=Math.cos(pt.a)*pt.rad*R, pz=Math.sin(pt.a)*pt.rad*R, py=pt.y*R+Math.sin(t*0.6+pt.ph)*10;
-      var px1=px*cz - pz*sz, pz1=px*sz + pz*cz, py2=py*cy - pz1*sy, pz2=py*sy + pz1*cy;
-      var ppr=project(px1,py2,pz2), pc=brandColor((pt.y/2)+0.5), tw=0.4+0.6*Math.abs(Math.sin(t*2+pt.ph));
-      ctx.fillStyle='rgba('+pc[0]+','+pc[1]+','+pc[2]+','+((0.2+lv*0.5)*tw*ppr[2])+')';
-      ctx.beginPath(); ctx.arc(ppr[0],ppr[1], pt.sz*ppr[2]*(1+lv*0.5), 0, 6.28); ctx.fill();
-    }
-
+    for(var li=0;li<=LAT;li++){var c=brandColor((li/LAT)*0.8+0.1);var path=new Path2D();
+      for(var lj=0;lj<LON;lj++){var aV=P[idx(li,lj)],e=P[idx(li,lj+1)];path.moveTo(aV.x,aV.y);path.lineTo(e.x,e.y);
+        if(li<LAT){var b=P[idx(li+1,lj)];path.moveTo(aV.x,aV.y);path.lineTo(b.x,b.y);}}
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.08+lv*0.10)+')';ctx.lineWidth=2.6;ctx.stroke(path);
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.42+lv*0.40)+')';ctx.lineWidth=1.0;ctx.stroke(path);}
+    for(var s2=0;s2<sparks.length;s2++){var pt=sparks[s2];pt.a+=pt.sp*(1+lv*2);
+      var px=Math.cos(pt.a)*pt.rad*R,pz=Math.sin(pt.a)*pt.rad*R,py=pt.y*R+Math.sin(t*0.6+pt.ph)*9;
+      var px1=px*cz-pz*sz,pz1=px*sz+pz*cz,py2=py*cy-pz1*sy,pz2=py*sy+pz1*cy;
+      var ppr=project(px1,py2,pz2),pcol=brandColor(0.3+(pt.y/2)+0.5*0.4),tw=0.4+0.6*Math.abs(Math.sin(t*2+pt.ph));
+      ctx.fillStyle='rgba('+pcol[0]+','+pcol[1]+','+pcol[2]+','+((0.2+lv*0.5)*tw*ppr[2])+')';
+      ctx.beginPath();ctx.arc(ppr[0],ppr[1],pt.sz*ppr[2]*(1+lv*0.5),0,6.28);ctx.fill();}
     ctx.globalCompositeOperation='source-over';
+
+    /* waveform reacts to the same level */
+    for(var w=0;w<bars.length;w++){var bb=bars[w];
+      var base=state==='idle'?0.10:0.25;
+      var h=6+(base+lv*0.9)*40*(0.4+0.6*Math.abs(Math.sin(t*bb.sp*4+bb.ph)));
+      bb.el.style.height=Math.max(4,Math.min(46,h)).toFixed(1)+'px';}
+
     requestAnimationFrame(frame);
   }
-
-  var LABELS = {
-    idle:      ['Idle', 'Resting state — a slow, calm breath.'],
-    listening: ['Listening…', 'Attentive shimmer while you talk.'],
-    speaking:  ['Speaking', 'Reacts live to Jarvis’s voice.'],
-    thinking:  ['Working…', 'The new thinking pulse — shown while he pulls your data, so it never sits dead.']
-  };
-  var labelEl = document.getElementById('label'), subEl = document.getElementById('sub');
-  function setState(s) {
-    state = s;
-    labelEl.textContent = LABELS[s][0];
-    subEl.textContent = LABELS[s][1];
-    var btns = document.querySelectorAll('button[data-state]');
-    for (var k=0;k<btns.length;k++) btns[k].classList.toggle('active', btns[k].getAttribute('data-state')===s);
-  }
-  document.querySelectorAll('button[data-state]').forEach(function(btn){
-    btn.addEventListener('click', function(){ setState(btn.getAttribute('data-state')); });
-  });
-
-  resize();
   requestAnimationFrame(frame);
 
-  // Auto-demo: cycle through the states once so the preview is alive on load,
-  // then settle on "thinking" so the new state is front-and-center.
-  var seq = ['idle','listening','speaking','thinking'], si = 0;
-  var auto = setInterval(function(){ si++; if (si>=seq.length){ clearInterval(auto); return; } setState(seq[si]); }, 2600);
-  document.addEventListener('click', function(){ clearInterval(auto); }, { once: true });
-})();
+  /* ---------- clock + uptime ---------- */
+  var start=Date.now();
+  function pad(n){return String(n).padStart(2,'0');}
+  function tick(){var d=new Date();
+    document.getElementById('time').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    document.getElementById('date').textContent=d.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+    var up=Math.floor((Date.now()-start)/1000);
+    document.getElementById('uptime').textContent='UPTIME '+pad(Math.floor(up/3600))+':'+pad(Math.floor(up/60)%60)+':'+pad(up%60);}
+  setInterval(tick,1000);tick();
+
+  /* ---------- streaming log (SnapCoat / business context) ---------- */
+  var logEl=document.getElementById('log');
+  var msgs=['Company data synced','Pipeline analyzed','Revenue pace on track','Crew schedule confirmed','Lead sources scored','Proposals reviewed','AR aging checked','Weather pulled for exterior jobs','Call IQ graded','Margins verified','Web lookup ready','All systems nominal'];
+  function logLine(){var line=document.createElement('div');line.className='line';
+    var m=msgs[Math.floor(Math.random()*msgs.length)];line.innerHTML='&gt; '+m+' <span class="ok">[OK]</span>';
+    logEl.appendChild(line);line.style.transition='opacity .4s';requestAnimationFrame(function(){line.style.opacity=1;});
+    while(logEl.children.length>6)logEl.removeChild(logEl.firstChild);}
+
+  /* ---------- state controls ---------- */
+  var STATUS={idle:'STANDBY',listening:'LISTENING',speaking:'SPEAKING',thinking:'WORKING'};
+  function setState(s){state=s;
+    document.getElementById('statusText').textContent=STATUS[s];
+    var btns=document.querySelectorAll('#controls button');
+    for(var k=0;k<btns.length;k++)btns[k].classList.toggle('active',btns[k].getAttribute('data-state')===s);}
+  document.querySelectorAll('#controls button').forEach(function(b){b.addEventListener('click',function(){setState(b.getAttribute('data-state'));});});
+
+  /* ---------- boot sequence ---------- */
+  var bootTxt=document.getElementById('bootTxt'),bootFill=document.getElementById('bootFill'),boot=document.getElementById('boot');
+  var phases=['INITIALIZING SYSTEMS','LOADING NEURAL CORE','SYNCING COMPANY DATA','ESTABLISHING UPLINK','JARVIS ONLINE'];
+  var prog=0,bt=setInterval(function(){prog+=Math.random()*9+4;if(prog>=100)prog=100;
+    bootFill.style.width=prog+'%';
+    bootTxt.textContent=phases[Math.min(phases.length-1,Math.floor(prog/100*phases.length))];
+    if(prog>=100){clearInterval(bt);setTimeout(function(){
+      boot.classList.add('hidden');logLine();setInterval(logLine,1600);
+      /* auto-demo the states, then settle on Thinking */
+      var seq=['idle','listening','speaking','thinking'],si=0;
+      var auto=setInterval(function(){si++;if(si>=seq.length){clearInterval(auto);return;}setState(seq[si]);},2600);
+      document.addEventListener('click',function(){clearInterval(auto);},{once:true});
+    },600);}
+  },220);
 </script>
 </body>
 </html>
